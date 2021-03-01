@@ -1,3 +1,4 @@
+# Import libraries
 from stgraph_trainer.datasets import load_province_temporal_data
 from stgraph_trainer.datasets import data_diff
 from stgraph_trainer.datasets import timeseries_to_supervised
@@ -7,7 +8,6 @@ from stgraph_trainer.utils import get_config_from_json
 from stgraph_trainer.utils import compute_metrics
 from stgraph_trainer.utils import save_predictions
 from stgraph_trainer.utils import save_metrics
-from sklearn.preprocessing import MinMaxScaler
 from stgraph_trainer.models import create_lstm_model
 from stgraph_trainer.trainers import LSTMTrainer
 from stgraph_trainer.callbacks import PostPredictionCallback
@@ -16,10 +16,11 @@ import tensorflow as tf
 import numpy as np
 from functools import partial
 
+# Set up configs and parameters
 data_config_file = os.path.dirname(__file__) + '/configs/data_config.json'
 lstm_config_file = os.path.dirname(__file__) + '/configs/lstm_config.json'
 model_name = 'lstm'
-work_dir = os.path.abspath(os.path.dirname(__file__)) + '/results/'
+work_dir = os.path.abspath(os.path.dirname(__file__)) + '/results'
 
 data_configs = get_config_from_json(data_config_file)
 lstm_configs = get_config_from_json(lstm_config_file)
@@ -36,9 +37,12 @@ RECURRENT_DROP_RATE = float(lstm_configs['recurrent_drop_rate'])
 TRIALS = int(lstm_configs['trials'])
 EPOCHS = int(lstm_configs['epochs'])
 
+# Load and process dataset
 df = load_province_temporal_data(provinces=PROVINCES, status=STATUS)
 
-X_train, y_train, X_test, y_test, raw_train, raw_test, scaler = preprocess_data_for_lstm_model(df, SPLIT_DATE, TIME_STEPS)
+X_train, y_train, X_test, y_test, _, _, scaler = preprocess_data_for_lstm_model(df,
+                                                                                SPLIT_DATE,
+                                                                                TIME_STEPS)
 
 n_features = X_train.shape[-1]
 n_test_samples = len(y_test)
@@ -46,6 +50,9 @@ output_size = X_train.shape[-1]
 
 print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
 
+# Functions to handle post-prediction
+# including inverse transform and add back difference
+# to make predictions back to original scale.
 def inverse_transform(x, scaler, **kwargs):
   return scaler.inverse_transform(x)
 
@@ -59,6 +66,7 @@ inv_diff._order = 20
 
 tfms = [inv_trans, inv_diff]
 
+# Create model, train and evaluate
 rmse_results = []
 mae_results = []
 
@@ -109,6 +117,7 @@ for trial in range(TRIALS):
   mae_results.append(m)
   print(m, m_avg)
 
+# Save metrics
 save_metrics(rmse_results,
              columns=PROVINCES + ['Avg'],
              model_name=model_name,
