@@ -1,10 +1,48 @@
 import tensorflow as tf
 import numpy as np
 import math
-from .base import BaseTrainer
 import time
+from .base import BaseTrainer
 
 class Seq2SeqTrainer(BaseTrainer):
+  """
+  Trainer class for the Seq2Seq model.
+
+  Parameters
+  ----------
+  model: array of 2 objects
+    The encoder and decoder.
+
+  train_ds: object
+    The train dataset.
+
+  test_ds: object
+    The test dataset.
+
+  loss_func: object
+    The loss object function.
+
+  optimizer: object
+    The optimizer used to train the model.
+
+  callbacks: list or objects, default None
+    The list of callbacks to execute.
+
+  raw_test: array of shape (n_samples, n_features)
+    The raw test dataset used for computing metrics.
+    Here, n_features is the number of predicted time series.
+
+  Attributes
+  ----------
+  history: dict of list
+    Information of training. None when initialize.
+
+  train_loss: object
+    Metric object to compute the loss of training.
+
+  test_loss: object
+    Metric object to compute the loss of testing.
+  """
   def __init__(self,
                model,
                train_ds,
@@ -32,6 +70,19 @@ class Seq2SeqTrainer(BaseTrainer):
     self.test_loss = tf.keras.metrics.Mean()
 
   def train(self, epochs):
+    """
+    Train the model.
+
+    Parameters
+    ----------
+    epochs: int
+      The number of training epochs.
+
+    Returns
+    -------
+    history: dict of list
+      Information of training.
+    """
     self.history = {'epoch': [],
                     'train_loss': [],
                     'test_loss': [],
@@ -65,7 +116,23 @@ class Seq2SeqTrainer(BaseTrainer):
     return self.history
 
   def train_step(self, x_batch, y_batch, enc_hidden):
-    loss = 0
+    """
+    Train the model for 1 step (or batch).
+
+    Parameters
+    ----------
+    x_batch: array shape of (batch_size, time_steps, n_features)
+      Input batch data for features.
+
+    y_batch: array shape of (batch_size, output_size)
+      Input batch data for labels, with output_size is
+
+    Returns
+    -------
+    loss: float Tensor
+      Training loss of a batch.
+    """
+    loss = 0.
     with tf.GradientTape() as tape:
       enc_output, enc_hidden = self.encoder(x_batch, enc_hidden)
       dec_hidden = enc_hidden
@@ -84,10 +151,27 @@ class Seq2SeqTrainer(BaseTrainer):
     return batch_loss
 
   def evaluate(self):
+    """
+    Conduct prediction and evaluation.
+
+    Returns
+    -------
+    metrics: float Tensor
+      The loss on the raw test dataset.
+    """
     predictions = self.predict()
     return self.loss_func(self.raw_test, predictions)
 
   def predict(self):
+    """
+    Make prediction.
+
+    Returns
+    -------
+    predictions: array of shape (n_samples, n_features)
+      The prediction used for computing metrics.
+      Here, n_features is the number of predicted time series (provinces).
+    """
     predictions = np.array([])
     hidden = tf.zeros((1, self.encoder.enc_units))
     for i, (x_batch, y_batch) in enumerate(self.test_ds):

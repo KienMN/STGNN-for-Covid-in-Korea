@@ -5,6 +5,7 @@ import numpy as np
 import math
 
 def listify(o):
+  """Make a list from the input object."""
   if o is None:
     return []
   if isinstance(o, list):
@@ -16,7 +17,7 @@ def listify(o):
   return [o]
 
 def compose(x, funcs, *args, order_key='_order', **kwargs):
-  """Apply a list of funcs to input x"""
+  """Apply a list of funcs to input x."""
   key = lambda o: getattr(o, order_key, 0)
   for f in sorted(listify(funcs), key=key):
     x = f(x, **kwargs)

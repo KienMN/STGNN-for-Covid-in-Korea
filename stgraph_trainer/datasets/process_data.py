@@ -3,6 +3,19 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 def data_diff(data):
+  """
+  Calculates the difference of a Dataframe element compared with previous element in the Dataframe.
+
+  Parameters
+  ----------
+  data: 2D array
+    Input array data.
+
+  Returns
+  -------
+  data: DataFrame
+    Difference array data, or the changes to the observations from one to the next.
+  """
   if not isinstance(data, pd.DataFrame):
     data = pd.DataFrame(data)
   data = data.diff()

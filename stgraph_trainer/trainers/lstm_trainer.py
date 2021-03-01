@@ -1,10 +1,48 @@
 import tensorflow as tf
 import numpy as np
-from .base import BaseTrainer
 import math
 import time
+from .base import BaseTrainer
 
 class LSTMTrainer(BaseTrainer):
+  """
+  Trainer class for the LSTM model.
+
+  Parameters
+  ----------
+  model: object
+    The model to train and predict.
+
+  train_ds: object
+    The train dataset.
+
+  test_ds: object
+    The test dataset.
+
+  loss_func: object
+    The loss object function.
+
+  optimizer: object
+    The optimizer used to train the model.
+
+  callbacks: list or objects, default None
+    The list of callbacks to execute.
+
+  raw_test: array of shape (n_samples, n_features)
+    The raw test dataset used for computing metrics.
+    Here, n_features is the number of predicted time series (provinces).
+
+  Attributes
+  ----------
+  history: dict of list
+    Information of training. None when initialize.
+
+  train_loss: object
+    Metric object to compute the loss of training.
+
+  test_loss: object
+    Metric object to compute the loss of testing.
+  """
   def __init__(self,
                model,
                train_ds,
@@ -28,6 +66,19 @@ class LSTMTrainer(BaseTrainer):
     self.test_loss = tf.keras.metrics.Mean()
 
   def train(self, epochs):
+    """
+    Train the model.
+
+    Parameters
+    ----------
+    epochs: int
+      The number of training epochs.
+
+    Returns
+    -------
+    history: dict of list
+      Information of training.
+    """
     self.history = {'epoch': [],
                     'train_loss': [],
                     'test_loss': [],
@@ -61,6 +112,22 @@ class LSTMTrainer(BaseTrainer):
     return self.history
 
   def train_step(self, x_batch, y_batch):
+    """
+    Train the model for 1 step (or batch).
+
+    Parameters
+    ----------
+    x_batch: array shape of (batch_size, time_steps, n_features)
+      Input batch data for features.
+
+    y_batch: array shape of (batch_size, output_size)
+      Input batch data for labels, with output_size is
+
+    Returns
+    -------
+    loss: float Tensor
+      Training loss of a batch.
+    """
     with tf.GradientTape() as tape:
       y_pred = self.model(x_batch, training=True)
       assert y_pred.shape == y_batch.shape
@@ -70,10 +137,27 @@ class LSTMTrainer(BaseTrainer):
     return loss
 
   def evaluate(self):
+    """
+    Conduct prediction and evaluation.
+
+    Returns
+    -------
+    metrics: float Tensor
+      The loss on the raw test dataset.
+    """
     predictions = self.predict()
     return self.loss_func(self.raw_test, predictions)
 
   def predict(self):
+    """
+    Make prediction.
+
+    Returns
+    -------
+    predictions: array of shape (n_samples, n_features)
+      The prediction used for computing metrics.
+      Here, n_features is the number of predicted time series (provinces).
+    """
     predictions = []
     for i, (x_batch, y_batch) in enumerate(self.test_ds):
       self.y_hat = self.model(x_batch, training=False)
