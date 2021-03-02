@@ -67,3 +67,8 @@ The process in a test file is as follow, check each file for more details.
 - Make prediction and compute metrics.
 
 After finishing, predictions and metric scores will be stored as CSV file in `tests/results` folder.
+
+## References
+1. COVID-19 in Korea datasets: https://kosis.kr/covid_eng/covid_index.do; https://www.kaggle.com/kimjihoo/coronavirusdataset.
+2. STGCN in traffic: https://github.com/FelixOpolka/STGCN-PyTorch.
+3. Seq2Seq in Neural machine translation: https://www.tensorflow.org/tutorials/text/nmt_with_attention.
