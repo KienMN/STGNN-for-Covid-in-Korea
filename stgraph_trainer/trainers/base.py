@@ -1,4 +1,3 @@
-import tensorflow as tf
 from keras.callbacks import CallbackList
 
 class BaseTrainer():

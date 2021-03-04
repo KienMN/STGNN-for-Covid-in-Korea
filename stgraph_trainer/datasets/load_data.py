@@ -23,4 +23,10 @@ def load_province_temporal_data(provinces='Seoul', status='New'):
 def load_province_coordinates():
   """Load coordiantes of provinces."""
   filename = 'Region.csv'
-  df = load_df(filename)
+  region_df = load_df(filename)
+  province_coords = region_df[region_df.city == region_df.province][['province', 'latitude', 'longitude']].iloc[:-1]
+  # Swap Incheon and Gwangju
+  temp_row = province_coords.iloc[3].copy()
+  province_coords.iloc[3] = province_coords.iloc[4].copy()
+  province_coords.iloc[4] = temp_row
+  return province_coords.reset_index(drop=True)

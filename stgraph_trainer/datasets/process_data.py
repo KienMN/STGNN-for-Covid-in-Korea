@@ -159,7 +159,7 @@ def preprocess_data_for_seq2seq(data,
 
   Returns
   -------
-  X_train: 2D array shape of ((n_train_samples - time_steps) * , n_timeseries, time_steps)
+  X_train: 2D array shape of ((n_train_samples - time_steps) * n_timeseries, time_steps)
     The supervised train data.
 
   y_train: 2D array shape of ((n_train_samples - time_steps) * n_timeseries, 1)
@@ -208,5 +208,73 @@ def preprocess_data_for_seq2seq(data,
 
   X_test = np.concatenate([X_test[:, :, i] for i in range(X_test.shape[-1])])
   y_test = np.concatenate([y_test[:, [i]] for i in range(y_test.shape[-1])])
+
+  return X_train, y_train, X_test, y_test, train, test, scaler
+
+def preprocess_data_for_stgnn(data,
+                              split_date,
+                              time_steps,
+                              feature_range=None):
+  """
+  Prepare data for STGNN model.
+
+  Parameters
+  ----------
+  data: 2D array shape of (n_samples, n_timeseries)
+    The original time serires data. n_timeseires is the number of time series in the data.
+
+  split_date: str, format of YYYY-MM-DD
+    The date to split data into train and test set.
+
+  time_steps: int
+    The number of time steps (or context length) of the series to be processed to make prediction.
+
+  feature_range: tuple, defautl: None
+    The min, max value for using MinMaxScaler to normalize data.
+    Default is None, which means using StandardScaler.
+
+  Returns
+  -------
+  X_train: 3D array shape of (n_train_samples - time_steps, n_timeseries, time_steps)
+    The supervised train data.
+
+  y_train: 2D array shape of (n_train_samples - time_steps, n_timeseries)
+    The supervised train labels.
+
+  X_test: 3D array shape of (n_test_samples, n_timeseries, time_steps)
+    The supervised test data.
+
+  y_test: 2D array shape of (n_test_samples, n_timeseries)
+    The supervised test labels.
+
+  train: 2D array shape of (n_train_samples, n_timeseries)
+    The value of train dataset, after differencing.
+
+  test: 2D array shape of (n_test_samples + time_steps, n_timeseries)
+    The value of test dataset, after differencing.
+
+  scaler: object
+    MinMaxScaler or Standard Scaler used to transform the data.
+  """
+  
+  data = data_diff(data)
+
+  train = data[data.index < split_date]
+  test = data.iloc[len(train) - time_steps:, :]
+
+  if feature_range is not None:
+    scaler = MinMaxScaler(feature_range=feature_range)
+  else:
+    scaler = StandardScaler()
+  train_scaled = scaler.fit_transform(train)
+  test_scaled = scaler.transform(test)
+
+  train_arr = timeseries_to_supervised(train_scaled, lag=time_steps)
+  X_train = train_arr[:, :-1, :].transpose(0, 2, 1)
+  y_train = train_arr[:, -1, :]
+
+  test_arr = timeseries_to_supervised(test_scaled, lag=time_steps)
+  X_test = test_arr[:, :-1, :].transpose(0, 2, 1)
+  y_test = test_arr[:, -1, :]
 
   return X_train, y_train, X_test, y_test, train, test, scaler
