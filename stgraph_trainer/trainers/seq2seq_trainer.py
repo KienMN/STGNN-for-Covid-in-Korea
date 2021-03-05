@@ -121,11 +121,14 @@ class Seq2SeqTrainer(BaseTrainer):
 
     Parameters
     ----------
-    x_batch: array shape of (batch_size, time_steps, n_features)
+    x_batch: array shape of (batch_size, time_steps)
       Input batch data for features.
 
-    y_batch: array shape of (batch_size, output_size)
-      Input batch data for labels, with output_size is
+    y_batch: array shape of (batch_size, n_timesteps_ahead)
+      Input batch data for labels with the number of timesteps ahead to predict.
+
+    enc_hidden: array shape of (batch_size, enc_hidden_size)
+      Hidden state for the encoder.
 
     Returns
     -------

@@ -146,7 +146,9 @@ class Decoder(tf.keras.Model):
     """
     if len(x.shape) == 2:
       x = tf.reshape(x, (x.shape[0], x.shape[1], 1))
-    decoding_output, hidden_state = self.gru(x, initial_state=hidden, training=training)
+    decoding_output, hidden_state = self.gru(x,
+                                             initial_state=hidden,
+                                             training=training)
     decoding_output = tf.reshape(decoding_output, (-1, decoding_output.shape[2]))
     x = self.fc(decoding_output)
     return x, hidden_state

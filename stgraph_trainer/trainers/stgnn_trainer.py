@@ -1,4 +1,3 @@
-# import tensorflow as tf
 import torch
 import numpy as np
 import math
@@ -15,10 +14,11 @@ class STGNNTrainer(BaseTrainer):
     The model to train and predict.
 
   train_ds: object
-    The train dataset.
+    The train dataloader.
 
-  test_ds: object
-    The test dataset.
+  test_ds: object for STGNN, or tensor for Proposed STGNN
+    shape of (n_test_samples, n_nodes, time_steps, in_channels)
+    The test dataloader for STGNN, full test tensor for Proposed STGNN.
 
   adj: 2D tensor shape of (n_nodes, n_nodes)
     Adjacency matrix for graph convolution.
@@ -91,14 +91,12 @@ class STGNNTrainer(BaseTrainer):
     
     for epoch in range(epochs):
       total_loss = 0.
-      time_steps = self.model.temp_feat
+      time_steps = self.model.time_steps
       n_steps_per_epoch = len(self.train_ds) - time_steps
       
       start_epoch_train_time = time.time()
       for x_batch, y_batch in self.train_ds:
-        
-        x_batch = x_batch.squeeze()
-        x_batch = x_batch.to(self.device)
+        x_batch = x_batch.squeeze(0).to(self.device)
         y_batch = y_batch.T.to(self.device)
         loss = self.train_step(x_batch, y_batch, self.adj)
         total_loss += loss.item()
@@ -126,11 +124,11 @@ class STGNNTrainer(BaseTrainer):
 
     Parameters
     ----------
-    x_batch: array shape of (batch_size, time_steps, n_features)
+    x_batch: tensor
       Input batch data for features.
 
-    y_batch: array shape of (batch_size, output_size)
-      Input batch data for labels, with output_size is number of nodes.
+    y_batch: tensor
+      Input batch data for labels.
 
     Returns
     -------
@@ -173,7 +171,7 @@ class STGNNTrainer(BaseTrainer):
     self.model.eval()
     for i, (x_batch, y_batch) in enumerate(self.test_ds):
       with torch.no_grad():
-        x_batch = x_batch.squeeze().to(self.device)
+        x_batch = x_batch.squeeze(0).to(self.device)
         y_pred = self.model(x_batch, self.adj)
         
         # Inverse prediction to original scale
@@ -182,3 +180,72 @@ class STGNNTrainer(BaseTrainer):
         y_pred = self.raw_test[i, :] + y_pred
         predictions.append(y_pred.copy())
     return np.concatenate(predictions, axis=0)
+
+class ProposedSTGNNTrainer(STGNNTrainer):
+  def train(self, epochs):
+    """
+    Train the model.
+
+    Parameters
+    ----------
+    epochs: int
+      The number of training epochs.
+
+    Returns
+    -------
+    history: dict of list
+      Information of training.
+    """
+    self.history = {'epoch': [],
+                    'train_loss': [],
+                    'test_loss': [],
+                    'elapsed_time': []}
+    
+    for epoch in range(epochs):
+      epoch_training_losses = []
+      time_steps = self.model.time_steps
+      
+      start_epoch_train_time = time.time()
+      for x_batch, y_batch in self.train_ds:
+        x_batch = x_batch.to(self.device)
+        y_batch = y_batch.to(self.device)
+        loss = self.train_step(x_batch, y_batch, self.adj)
+        epoch_training_losses.append(loss.detach().cpu().numpy())
+      
+      end_epoch_train_time = time.time()
+
+      t_loss = self.evaluate()
+
+      self.history['epoch'].append(epoch + 1)
+      self.history['train_loss'].append(sum(epoch_training_losses)/len(epoch_training_losses))
+      self.history['test_loss'].append(t_loss.item())
+      self.history['elapsed_time'].append(end_epoch_train_time - start_epoch_train_time)
+
+      msg = 'Epoch: {}; Elapsed time: {}; Train loss: {:.6f}; Test MSE: {:.6f}; Test loss RMSE: {:.6f}'
+      print(msg.format(self.history['epoch'][-1],
+                       self.history['elapsed_time'][-1],
+                       self.history['train_loss'][-1],
+                       self.history['test_loss'][-1],
+                       math.sqrt(self.history['test_loss'][-1])))
+
+    return self.history
+  
+  def predict(self):
+    """
+    Make prediction.
+
+    Returns
+    -------
+    predictions: array of shape (n_samples, n_features)
+      The prediction used for computing metrics.
+      Here, n_features is the number of predicted time series (provinces).
+    """
+    with torch.no_grad():
+      self.model.eval()
+      val_input = self.test_ds.to(self.device)
+      predictions = self.model(val_input, self.adj)
+      # Inverse prediction to original scale
+      predictions = predictions.squeeze().detach().cpu().numpy()
+      predictions = self.scaler.inverse_transform(predictions)
+      predictions = predictions + self.raw_test[:-1]
+    return predictions

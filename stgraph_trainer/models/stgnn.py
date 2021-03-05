@@ -103,7 +103,7 @@ class STGNN(nn.Module):
                drop_rate=0.,
                bias=False):
     super(STGNN, self).__init__()
-    self.temp_feat = temp_feat
+    self.time_steps = temp_feat
     self.linear1 = nn.Linear(temp_feat, in_feat)
     self.layer1 = GraphConvolution(in_feat, hidden_feat, bias=bias)
     self.layer2 = GraphConvolution(hidden_feat + in_feat, out_feat, bias=bias)
@@ -197,6 +197,7 @@ class ProposedSTGNN(nn.Module):
     
     super(ProposedSTGNN, self).__init__()
     self.drop_rate = drop_rate
+    self.time_steps = time_steps
     self.conv1 = nn.Conv2d(in_channels=in_channels,
                            out_channels=spatial_channels,
                            kernel_size=(1, temporal_kernel))
@@ -213,6 +214,8 @@ class ProposedSTGNN(nn.Module):
 
     if batch_norm:
       self.batch_norm = nn.BatchNorm2d(n_nodes)
+    else:
+      self.batch_norm = None
     
     self.fc = nn.Linear((time_steps - (temporal_kernel - 1) * 2) * (out_channels),
                          predicted_time_steps)

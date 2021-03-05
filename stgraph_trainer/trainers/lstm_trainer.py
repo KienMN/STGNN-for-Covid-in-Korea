@@ -121,7 +121,7 @@ class LSTMTrainer(BaseTrainer):
       Input batch data for features.
 
     y_batch: array shape of (batch_size, output_size)
-      Input batch data for labels, with output_size is
+      Input batch data for labels, with output_size is the number of features/nodes.
 
     Returns
     -------

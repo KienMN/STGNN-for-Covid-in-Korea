@@ -14,17 +14,16 @@ from stgraph_trainer.utils import get_distance_in_km_between_earth_coordinates
 from stgraph_trainer.utils import get_adjacency_matrix
 from stgraph_trainer.utils import get_normalized_adj
 from torch.utils.data import DataLoader
-from stgraph_trainer.models import STGNN
-from stgraph_trainer.trainers import STGNNTrainer
+from stgraph_trainer.models import ProposedSTGNN
+from stgraph_trainer.trainers import STGNNTrainer, ProposedSTGNNTrainer
 import os
 import torch
 import numpy as np
-from functools import partial
 
 # Set up configs and parameters
 data_config_file = os.path.dirname(__file__) + '/configs/data_config.json'
-model_config_file = os.path.dirname(__file__) + '/configs/stgnn_config.json'
-model_name = 'stgnn'
+model_config_file = os.path.dirname(__file__) + '/configs/proposed_stgnn_config.json'
+model_name = "proposed_stgnn"
 work_dir = os.path.abspath(os.path.dirname(__file__)) + '/results'
 
 data_configs = get_config_from_json(data_config_file)
@@ -35,12 +34,14 @@ SPLIT_DATE = data_configs['split_date']
 TIME_STEPS = int(data_configs['time_steps'])
 STATUS = data_configs['status']
 
-TEMP_FEAT = int(model_configs['temp_feat'])
-IN_FEAT = int(model_configs['in_feat'])
-HIDDEN_FEAT = int(model_configs['hidden_feat'])
-OUT_FEAT = int(model_configs['out_feat'])
-PRED_FEAT = int(model_configs['pred_feat'])
-BIAS = bool(model_configs['bias'])
+N_NODES = len(PROVINCES)
+PREDICTED_TIME_STEPS = int(model_configs['predicted_time_steps'])
+SPATIAL_CHANNELS = int(model_configs['spatial_channels'])
+SPATIAL_HIDDEN_CHANNELS = int(model_configs['spatial_hidden_channels'])
+SPATIAL_OUT_CHANNELS = int(model_configs['spatial_out_channels'])
+OUT_CHANNELS = int(model_configs['out_channels'])
+TEMPORAL_KERNEL = int(model_configs['temporal_kernel'])
+BATCH_NORM = bool(model_configs['batch_norm'])
 DROP_RATE = float(model_configs['drop_rate'])
 
 TRIALS = int(model_configs['trials'])
@@ -51,7 +52,6 @@ if torch.cuda.is_available():
   device = torch.device('cuda', 0)
 else:
   device = torch.device('cpu')
-print(device)
 
 # Load and process dataset
 df = load_province_temporal_data(provinces=PROVINCES, status=STATUS)
@@ -59,9 +59,16 @@ df = load_province_temporal_data(provinces=PROVINCES, status=STATUS)
 X_train, y_train, X_test, y_test, _, _, scaler = preprocess_data_for_stgnn(df,
                                                                            SPLIT_DATE,
                                                                            TIME_STEPS)
-print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
+
+X_train = torch.tensor(X_train).unsqueeze(-1)
+y_train = torch.tensor(y_train).unsqueeze(-1)
+X_test = torch.tensor(X_test).unsqueeze(-1)
+y_test = torch.tensor(y_test).unsqueeze(-1)
+
 n_test_samples = len(y_test)
-print(n_test_samples)
+IN_CHANNELS = X_train.shape[-1]
+# print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
+# print(n_test_samples)
 
 # Coordinates data
 province_coords = load_province_coordinates().values[:, 1:]
@@ -84,38 +91,38 @@ rmse_results = []
 mae_results = []
 
 for trial in range(TRIALS):
-  model = STGNN(TEMP_FEAT,
-                IN_FEAT,
-                HIDDEN_FEAT,
-                OUT_FEAT,
-                PRED_FEAT,
-                DROP_RATE,
-                BIAS)
+  model = ProposedSTGNN(N_NODES,
+                        TIME_STEPS,
+                        PREDICTED_TIME_STEPS,
+                        IN_CHANNELS,
+                        SPATIAL_CHANNELS,
+                        SPATIAL_HIDDEN_CHANNELS,
+                        SPATIAL_OUT_CHANNELS,
+                        OUT_CHANNELS,
+                        TEMPORAL_KERNEL,
+                        DROP_RATE,
+                        BATCH_NORM)
   
   model.to(device)
   # print(model)
 
   train_dl = DataLoader(PairDataset(X_train, y_train),
                         batch_size=BATCH_SIZE,
-                        shuffle=False)
-
-  test_dl = DataLoader(PairDataset(X_test, y_test),
-                       batch_size=BATCH_SIZE,
-                       shuffle=False)
+                        shuffle=True)
 
   loss_func = torch.nn.MSELoss()
-  optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+  optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-  trainer = STGNNTrainer(model,
-                         train_dl,
-                         test_dl,
-                         adj,
-                         scaler,
-                         loss_func,
-                         optimizer,
-                         device,
-                         callbacks=None,
-                         raw_test=df.iloc[-(n_test_samples + 1):].values)
+  trainer = ProposedSTGNNTrainer(model,
+                                 train_dl,
+                                 X_test,
+                                 adj,
+                                 scaler,
+                                 loss_func,
+                                 optimizer,
+                                 device,
+                                 callbacks=None,
+                                 raw_test=df.iloc[-(n_test_samples + 1):].values)
 
   history = trainer.train(EPOCHS)
   print(history)
@@ -127,7 +134,7 @@ for trial in range(TRIALS):
                    columns=PROVINCES,
                    index=df.iloc[-n_test_samples:].index,
                    path=work_dir)
-  print(predict.shape)
+  # print(predict.shape)
 
   m, m_avg = compute_metrics(df.iloc[-n_test_samples:], predict, metric='rmse')
   m = np.append(m, m_avg)
