@@ -1,0 +1,8 @@
+{
+  "lstm_units": 16,
+  "batch_size": 1,
+  "drop_rate": 0.2,
+  "recurrent_drop_rate": 0,
+  "trials": 5,
+  "epochs": 10
+}

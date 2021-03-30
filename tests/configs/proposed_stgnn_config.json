@@ -1,0 +1,13 @@
+{
+  "predicted_time_steps": 1,
+  "spatial_channels": 32,
+  "spatial_hidden_channels": 16,
+  "spatial_out_channels": 16,
+  "out_channels": 16,
+  "temporal_kernel": 3,
+  "batch_norm": 0,
+  "batch_size": 16,
+  "drop_rate": 0.2,
+  "trials": 5,
+  "epochs": 30
+}

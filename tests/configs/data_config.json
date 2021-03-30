@@ -1,0 +1,23 @@
+{
+  "split_date": "2020-10-20",
+  "provinces": [
+    "Seoul",
+    "Busan",
+    "Daegu",
+    "Incheon",
+    "Gwangju",
+    "Daejeon",
+    "Ulsan",
+    "Sejong",
+    "Gyeonggi",
+    "Gangwon",
+    "Chungbuk",
+    "Chungnam",
+    "Jeonbuk",
+    "Jeonnam",
+    "Gyeongbuk",
+    "Gyeongnam",
+    "Jeju"],
+  "time_steps": 7,
+  "status": "New"
+}
