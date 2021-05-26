@@ -1,0 +1,1 @@
+recursive-include stgraph_trainer/datasets/data *.csv
