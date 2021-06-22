@@ -10,6 +10,7 @@ from .process_data import preprocess_data_for_stgnn
 from .process_data import inverse_diff
 from .process_data import preprocess_weather_data_for_stgnn
 from .process_data import process_time_series
+from .process_data import process_weather_series
 
 
 __all__ = ['load_province_temporal_data',
@@ -22,5 +23,6 @@ __all__ = ['load_province_temporal_data',
            'preprocess_data_for_seq2seq',
            'preprocess_data_for_stgnn',
            'preprocess_weather_data_for_stgnn',
-           'process_time_series'
+           'process_time_series',
+           'process_weather_series',
            'inverse_diff']

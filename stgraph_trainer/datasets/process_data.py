@@ -412,3 +412,68 @@ def process_time_series(data,
   y = data_[:, -1, :]
 
   return X, y, scaler
+
+def process_weather_series(data,
+                           stationary=True,
+                           scalers=None,
+                           train=True,
+                           time_steps=7):
+  """
+  Process time series data.
+
+  Parameters
+  ----------
+  data: 2D array shape of (n_samples, n_timeseries)
+    The original time serires data.
+    n_timeseires is the number of time series in the data.
+
+  stationary: bool, default: True
+    Whether to difference the data.
+    If True, the current observation is subtracted by the previous observation.
+
+  scaler: object
+    Scikit Learn Scaler object that is used to transform the data.
+
+  train: bool, default: True
+    Is this data train set.
+
+  time_steps: int
+    The number of time steps (or context length) of the series
+    to be processed to make prediction.
+
+  Returns
+  -------
+  X: 3D array shape of (n_samples - time_steps (-1), time_steps, n_timeseries)
+    The supervised features.
+
+  y: 2D array shape of (n_samples - time_steps (-1), n_timeseries)
+    The supervised targets.
+  """
+  data = listify(data)
+  data_arr = []
+  if isinstance(scalers, list):
+    pass
+  elif isinstance(scalers, object):
+    scalers = [scalers] * len(data)
+  
+  for df, scaler in zip(data, scalers):
+    if stationary:
+      df = data_diff(df)
+    else:
+      df = df.iloc[1:]
+
+    if not scaler:
+      # scaler = StandardScaler()
+      data_scaled = df
+    else:
+      if train:
+        data_scaled = scaler.fit_transform(df)
+      else:
+        data_scaled = scaler.transform(df)
+
+    data_ = timeseries_to_supervised(data_scaled, lag=time_steps)
+    X = data_[:, :-1, :].transpose(0, 2, 1)
+    y = data_[:, -1, :]
+    data_arr.append(np.expand_dims(X, axis=-1))
+
+  return np.concatenate(data_arr, axis=-1), y, scalers
