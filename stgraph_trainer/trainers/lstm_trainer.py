@@ -167,3 +167,23 @@ class LSTMTrainer(BaseTrainer):
       self.callbacks.on_test_batch_end(batch=i)
       predictions.append(self.y_hat.copy())
     return np.concatenate(predictions, axis=0)
+
+class LSTMOneTrainer(LSTMTrainer):
+  """
+  Trainer class for the LSTM model
+  with input shape = (batch_size, n_timesteps, 1).
+  """
+  def predict(self):
+    predictions = np.array([])
+    for i, (x_batch, y_batch) in enumerate(self.test_ds):
+      y_hat = self.model(x_batch, training=False).numpy()
+      predictions = np.append(predictions, y_hat.reshape(-1,))
+      
+    # reshape prediction shape = (n_samples * n_provinces)
+    # to original test shape (n_samples, n_provinces)
+    predictions = np.reshape(predictions, (self.raw_test.shape))
+    self.predictions = predictions
+
+    # Inverse predictions to normal range
+    self.callbacks.on_predict_end(logs=None)
+    return self.predictions
